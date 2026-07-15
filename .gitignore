@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+env/
+
+# Credentials
+.env
+.env.*
+
+# ...but the example template is public and must stay tracked
+!.env.example
+
+# Project outputs (AI-generated posts)
+output/
+
+# Databases (CrewAI memory and other potential local DBs)
+*.sqlite3
+*.db
+
+# OS / IDEs
+.DS_Store
+.vscode/
+.idea/
