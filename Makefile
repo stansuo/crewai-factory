@@ -1,4 +1,4 @@
-.PHONY: run demo test lint typecheck ci clean docker-run docker-build
+.PHONY: run demo test test-cov lint format typecheck ci clean docker-run docker-build
 
 # ── Run locally ──────────────────────────────────────────────────
 
