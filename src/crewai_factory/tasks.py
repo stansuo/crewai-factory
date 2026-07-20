@@ -10,9 +10,21 @@ from __future__ import annotations
 from datetime import datetime
 
 from crewai import Task
+from pydantic import BaseModel, Field
 
 from crewai_factory.agents import AgentTeam
 from crewai_factory.persona import Persona
+
+
+class EditorVerdict(BaseModel):
+    """Structured verdict returned by the editor agent."""
+
+    score: int = Field(ge=0, le=100, description="Quality score from 0 to 100.")
+    passed: bool = Field(description="True when the post meets the quality bar.")
+    feedback: str = Field(description="Actionable revision notes for the writer.")
+    final_post: str = Field(
+        default="", description="The approved post text; empty unless passed."
+    )
 
 
 def build_tasks(team: AgentTeam, persona: Persona) -> list[Task]:
