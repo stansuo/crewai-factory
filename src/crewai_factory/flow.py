@@ -1,12 +1,11 @@
 from __future__ import annotations
+
 from datetime import datetime
-from unittest import result
 
-from crewai import Crew, Process, Task, settings, tasks
-from pydantic import BaseModel, Field
+from crewai import Crew, Process, Task
 from crewai.flow.flow import Flow, listen, or_, router, start
+from pydantic import BaseModel, Field
 
-from crewai_factory import persona
 from crewai_factory.agents import AgentTeam, build_agents
 from crewai_factory.config import Settings
 from crewai_factory.persona import Persona
@@ -46,12 +45,12 @@ class ContentFlow(Flow[ContentState]):
         self.persona = persona
         self.settings = settings or Settings()
         self.team: AgentTeam = build_agents(self.persona, self.settings)
-        
+
     @start()
     def generate_topic(self) -> None:
-        
+
         today = datetime.now().strftime("%Y-%m-%d")
-        
+
         task_strategise = Task(
             description=(
                 f"Today is {today}. "
@@ -64,25 +63,24 @@ class ContentFlow(Flow[ContentState]):
                 ),
             agent=self.team.strategist,
             )
-        
+
         crew = Crew(
             agents=[self.team.strategist],
             tasks=[task_strategise],
             process=Process.sequential,
             verbose=self.settings.verbose,
         )
-        
+
         result = crew.kickoff()
         content = result.raw if hasattr(result, "raw") else str(result)
         self.state.topic = content
 
-
     @listen(or_(generate_topic, "retry"))
     def write_draft(self) -> None:
-        
+
         if not self.state.topic:
             raise ValueError("No topic generated yet. Cannot write draft.")
-        
+
         feedback = self.state.verdict.feedback if self.state.verdict and self.state.verdict.feedback else "No feedback yet."
         task_write = Task(
             description=(
@@ -108,11 +106,11 @@ class ContentFlow(Flow[ContentState]):
             process=Process.sequential,
             verbose=self.settings.verbose,
         )
-        
+
         result = crew.kickoff()
         content = result.raw if hasattr(result, "raw") else str(result)
         self.state.post = content
-    
+
     @listen(write_draft)
     def edit_draft(self) -> None:
 
@@ -148,22 +146,20 @@ class ContentFlow(Flow[ContentState]):
 
         if result.pydantic is None:
             raise ValueError("Editor did not return a valid EditorVerdict.")
-        
+
         verdict = result.pydantic
-        self.state.verdict = verdict 
-                 
+        self.state.verdict = verdict
+
         cycle = len(self.state.attempts) + 1
         self.state.attempts.append(
             Attempt(
-                cycle=cycle, 
-                score=verdict.score, 
-                content=self.state.post, 
-                feedback=verdict.feedback
+                cycle=cycle,
+                score=verdict.score,
+                content=self.state.post,
+                feedback=verdict.feedback,
             )
-        )       
-        
+        )
 
-    
     @router(edit_draft)
     def route_verdict(self) -> str:
         ...
@@ -175,4 +171,3 @@ class ContentFlow(Flow[ContentState]):
     @listen("failed")
     def handle_failure(self) -> None:
         ...
-
