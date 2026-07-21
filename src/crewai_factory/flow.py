@@ -1,7 +1,15 @@
 from __future__ import annotations
+from datetime import datetime
+from unittest import result
 
+from crewai import Crew, Process, Task, settings, tasks
 from pydantic import BaseModel, Field
+from crewai.flow.flow import Flow, listen, or_, router, start
 
+from crewai_factory import persona
+from crewai_factory.agents import AgentTeam, build_agents
+from crewai_factory.config import Settings
+from crewai_factory.persona import Persona
 from crewai_factory.tasks import EditorVerdict
 
 
@@ -28,3 +36,143 @@ class ContentState(BaseModel):
     attempts: list[Attempt] = Field(
         default_factory=list, description="A list of all attempts made by the writer."
     )
+
+
+class ContentFlow(Flow[ContentState]):
+    """A flow that orchestrates the three agents to generate content."""
+
+    def __init__(self, persona: Persona, settings: Settings | None = None) -> None:
+        super().__init__()
+        self.persona = persona
+        self.settings = settings or Settings()
+        self.team: AgentTeam = build_agents(self.persona, self.settings)
+        
+    @start()
+    def generate_topic(self) -> None:
+        
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        task_strategise = Task(
+            description=(
+                f"Today is {today}. "
+                f"Based on the persona '{self.persona.name}' and its voice identity, "
+                f"generate exactly one compelling topic for a {self.persona.platform} post "
+                f"in {self.persona.language}."
+                ),
+            expected_output=(
+                "A single topic sentence (under 50 words). No additional explanation."
+                ),
+            agent=self.team.strategist,
+            )
+        
+        crew = Crew(
+            agents=[self.team.strategist],
+            tasks=[task_strategise],
+            process=Process.sequential,
+            verbose=self.settings.verbose,
+        )
+        
+        result = crew.kickoff()
+        content = result.raw if hasattr(result, "raw") else str(result)
+        self.state.topic = content
+
+
+    @listen(or_(generate_topic, "retry"))
+    def write_draft(self) -> None:
+        
+        if not self.state.topic:
+            raise ValueError("No topic generated yet. Cannot write draft.")
+        
+        feedback = self.state.verdict.feedback if self.state.verdict and self.state.verdict.feedback else "No feedback yet."
+        task_write = Task(
+            description=(
+                f"Using the topic from the strategist, write a complete "
+                f"{self.persona.platform} post in {self.persona.language}.\n"
+                f"Topic: {self.state.topic}\n"
+                f"Voice: {self.persona.voice.tone}\n"
+                f"Perspective: {self.persona.voice.perspective}\n"
+                f"Maximum length: {self.persona.max_length} characters.\n"
+                f"The post must be ready to publish — no placeholders, "
+                f"no meta-commentary."
+                f"Follow the feedback from the editor: {feedback}"
+                ),
+            expected_output=(
+                f"A complete, publish-ready {self.persona.platform} post. Nothing else."
+                ),
+            agent=self.team.writer,
+        )
+
+        crew = Crew(
+            agents=[self.team.writer],
+            tasks=[task_write],
+            process=Process.sequential,
+            verbose=self.settings.verbose,
+        )
+        
+        result = crew.kickoff()
+        content = result.raw if hasattr(result, "raw") else str(result)
+        self.state.post = content
+    
+    @listen(write_draft)
+    def edit_draft(self) -> None:
+
+        task_edit = Task(
+            description=(
+                f"Post Content: {self.state.post}\n"
+                "Review the writer's post against these criteria:\n"
+                "1. Voice consistency with the persona\n"
+                "2. Engagement potential (would someone reply or share?)\n"
+                f"3. Length within {self.persona.max_length} characters\n"
+                "4. No factual red flags or policy violations\n\n"
+                f"Score the post from 0 to 100. The system approves any post scoring "
+                f"{self.settings.quality_threshold} or above, so score accurately and make "
+                f"your feedback specifically actionable toward clearing that bar."
+                ),
+            expected_output=(
+                "score: quality score from 0 to 100.\n"
+                "feedback: actionable revision notes for the writer.\n"
+                "final_post: the polished, ready-to-publish post text."
+                ),
+            output_pydantic=EditorVerdict,
+            agent=self.team.editor,
+        )
+
+        crew = Crew(
+            agents=[self.team.editor],
+            tasks=[task_edit],
+            process=Process.sequential,
+            verbose=self.settings.verbose,
+        )
+
+        result = crew.kickoff()
+
+        if result.pydantic is None:
+            raise ValueError("Editor did not return a valid EditorVerdict.")
+        
+        verdict = result.pydantic
+        self.state.verdict = verdict 
+                 
+        cycle = len(self.state.attempts) + 1
+        self.state.attempts.append(
+            Attempt(
+                cycle=cycle, 
+                score=verdict.score, 
+                content=self.state.post, 
+                feedback=verdict.feedback
+            )
+        )       
+        
+
+    
+    @router(edit_draft)
+    def route_verdict(self) -> str:
+        ...
+
+    @listen("save")
+    def save_post(self) -> None:
+        ...
+
+    @listen("failed")
+    def handle_failure(self) -> None:
+        ...
+
