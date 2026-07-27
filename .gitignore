@@ -17,6 +17,10 @@ env/
 # ...but the example template is public and must stay tracked
 !.env.example
 
+# Other sensitive files for local environment only
+*.local.*
+CLAUDE.local.md
+
 # Project outputs (AI-generated posts)
 output/
 
@@ -28,3 +32,4 @@ output/
 .DS_Store
 .vscode/
 .idea/
+
