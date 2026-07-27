@@ -55,8 +55,8 @@ class ContentFlow(Flow[ContentState]):
             description=(
                 f"Today is {today}. "
                 f"Based on the persona '{self.persona.name}' and its voice identity, "
-                f"generate exactly one compelling topic for a {self.persona.platform} post "
-                f"in {self.persona.language}."
+                f"generate exactly one compelling topic for a "
+                f"{self.persona.platform} post in {self.persona.language}."
                 ),
             expected_output=(
                 "A single topic sentence (under 50 words). No additional explanation."
@@ -81,7 +81,11 @@ class ContentFlow(Flow[ContentState]):
         if not self.state.topic:
             raise ValueError("No topic generated yet. Cannot write draft.")
 
-        feedback = self.state.verdict.feedback if self.state.verdict and self.state.verdict.feedback else "No feedback yet."
+        feedback = (
+            self.state.verdict.feedback
+            if self.state.verdict and self.state.verdict.feedback
+            else "No feedback yet."
+        )        
         task_write = Task(
             description=(
                 f"Using the topic from the strategist, write a complete "
@@ -122,9 +126,10 @@ class ContentFlow(Flow[ContentState]):
                 "2. Engagement potential (would someone reply or share?)\n"
                 f"3. Length within {self.persona.max_length} characters\n"
                 "4. No factual red flags or policy violations\n\n"
-                f"Score the post from 0 to 100. The system approves any post scoring "
-                f"{self.settings.quality_threshold} or above, so score accurately and make "
-                f"your feedback specifically actionable toward clearing that bar."
+                f"Score the post from 0 to 100. The system approves any post "
+                f"scoring {self.settings.quality_threshold} or above, so score "
+                f"accurately and make your feedback specifically actionable "
+                f"toward clearing that bar."
                 ),
             expected_output=(
                 "score: quality score from 0 to 100.\n"
