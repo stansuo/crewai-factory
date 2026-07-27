@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default for GITHUB_TOKEN. Jobs needing write access
+# must opt in explicitly at the job level.
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
