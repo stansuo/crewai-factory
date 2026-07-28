@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from crewai import Crew, Process, Task
+from crewai import Crew, CrewOutput, Process, Task
 from crewai.flow.flow import Flow, listen, or_, router, start
 from pydantic import BaseModel, Field
 
@@ -57,12 +57,12 @@ class ContentFlow(Flow[ContentState]):
                 f"Based on the persona '{self.persona.name}' and its voice identity, "
                 f"generate exactly one compelling topic for a "
                 f"{self.persona.platform} post in {self.persona.language}."
-                ),
+            ),
             expected_output=(
                 "A single topic sentence (under 50 words). No additional explanation."
-                ),
+            ),
             agent=self.team.strategist,
-            )
+        )
 
         crew = Crew(
             agents=[self.team.strategist],
@@ -85,7 +85,7 @@ class ContentFlow(Flow[ContentState]):
             self.state.verdict.feedback
             if self.state.verdict and self.state.verdict.feedback
             else "No feedback yet."
-        )        
+        )
         task_write = Task(
             description=(
                 f"Using the topic from the strategist, write a complete "
@@ -97,10 +97,10 @@ class ContentFlow(Flow[ContentState]):
                 f"The post must be ready to publish — no placeholders, "
                 f"no meta-commentary."
                 f"Follow the feedback from the editor: {feedback}"
-                ),
+            ),
             expected_output=(
                 f"A complete, publish-ready {self.persona.platform} post. Nothing else."
-                ),
+            ),
             agent=self.team.writer,
         )
 
@@ -130,12 +130,11 @@ class ContentFlow(Flow[ContentState]):
                 f"scoring {self.settings.quality_threshold} or above, so score "
                 f"accurately and make your feedback specifically actionable "
                 f"toward clearing that bar."
-                ),
+            ),
             expected_output=(
                 "score: quality score from 0 to 100.\n"
                 "feedback: actionable revision notes for the writer.\n"
-                "final_post: the polished, ready-to-publish post text."
-                ),
+            ),
             output_pydantic=EditorVerdict,
             agent=self.team.editor,
         )
@@ -149,10 +148,12 @@ class ContentFlow(Flow[ContentState]):
 
         result = crew.kickoff()
 
-        if result.pydantic is None:
-            raise ValueError("Editor did not return a valid EditorVerdict.")
+        if not isinstance(result, CrewOutput):
+            raise ValueError("Editor did not return a valid CrewOutput.")
 
         verdict = result.pydantic
+        if not isinstance(verdict, EditorVerdict):
+            raise ValueError("Editor did not return a valid EditorVerdict.")
         self.state.verdict = verdict
 
         cycle = len(self.state.attempts) + 1
@@ -167,12 +168,22 @@ class ContentFlow(Flow[ContentState]):
 
     @router(edit_draft)
     def route_verdict(self) -> str:
-        ...
+        verdict = self.state.verdict
+        # Fail early if verdict is missing
+        if verdict is None:
+            raise ValueError("No verdict available to route.")
+
+        passed = verdict.score >= self.settings.quality_threshold
+
+        if passed:
+            return "save"
+        elif len(self.state.attempts) < self.state.max_attempts:
+            return "retry"
+        else:
+            return "failed"
 
     @listen("save")
-    def save_post(self) -> None:
-        ...
+    def save_post(self) -> None: ...
 
     @listen("failed")
-    def handle_failure(self) -> None:
-        ...
+    def handle_failure(self) -> None: ...

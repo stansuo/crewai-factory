@@ -26,9 +26,6 @@ class EditorVerdict(BaseModel):
 
     score: int = Field(ge=0, le=100, description="Quality score from 0 to 100.")
     feedback: str = Field(description="Actionable revision notes for the writer.")
-    final_post: str = Field(
-        default="", description="The polished, ready-to-publish post text."
-    )
 
 
 def build_tasks(team: AgentTeam, persona: Persona) -> list[Task]:
