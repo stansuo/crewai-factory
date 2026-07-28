@@ -13,7 +13,7 @@ from pathlib import Path
 from crewai_factory.persona import Persona
 
 
-def _safe_filename(persona_name: str, now: datetime) -> str:
+def _safe_filename(persona_name: str, now: datetime, failed: bool) -> str:
     """Build a collision-resistant filename from persona name + timestamp.
 
     A random 6-char hex token (secrets.token_hex) supplies real entropy;
@@ -23,7 +23,8 @@ def _safe_filename(persona_name: str, now: datetime) -> str:
     slug = persona_name.lower().replace(" ", "-")[:20]
     ts = now.strftime("%Y%m%d_%H%M%S")
     token = secrets.token_hex(3)  # 6-character hex string
-    return f"post_{slug}_{ts}_{token}.md"
+    filename = f"post_{slug}_{ts}_{token}{'_failed' if failed else ''}.md"
+    return filename
 
 
 def save_post(
@@ -33,6 +34,7 @@ def save_post(
     model: str = "unknown",
     *,
     now: datetime | None = None,
+    failed: bool = False,
 ) -> Path:
     """Write a generated post to a markdown file and return its path.
 
@@ -41,10 +43,11 @@ def save_post(
     now = now or datetime.now()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = _safe_filename(persona.name, now)
+    filename = _safe_filename(persona.name, now, failed)
     filepath = output_dir / filename
 
     header = (
+        f"{'**Status**: FAILED\n\n' if failed else ''}"
         f"# {persona.name} — AI-generated {persona.platform} post\n\n"
         f"**Date**: {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
         f"**Persona**: {persona.name}\n"

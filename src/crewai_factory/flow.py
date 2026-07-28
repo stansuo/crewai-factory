@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from crewai import Crew, CrewOutput, Process, Task
 from crewai.flow.flow import Flow, listen, or_, router, start
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from crewai_factory.agents import AgentTeam, build_agents
 from crewai_factory.config import Settings
+from crewai_factory.output import save_post
 from crewai_factory.persona import Persona
 from crewai_factory.tasks import EditorVerdict
 
@@ -34,6 +36,9 @@ class ContentState(BaseModel):
     )
     attempts: list[Attempt] = Field(
         default_factory=list, description="A list of all attempts made by the writer."
+    )
+    output_path: Path | None = Field(
+        default=None, description="The path where the final post is saved."
     )
 
 
@@ -183,7 +188,25 @@ class ContentFlow(Flow[ContentState]):
             return "failed"
 
     @listen("save")
-    def save_post(self) -> None: ...
+    def save_output(self) -> None:
+        output_dir = self.settings.output_dir
+        filepath = save_post(
+            content=self.state.post,
+            persona=self.persona,
+            output_dir=output_dir,
+            model=self.settings.ollama_model,
+        )
+        self.state.output_path = filepath
 
     @listen("failed")
-    def handle_failure(self) -> None: ...
+    def handle_failure(self) -> None:
+        best = max(self.state.attempts, key=lambda a: a.score)
+        content = best.content
+        filepath = save_post(
+            content=content,
+            persona=self.persona,
+            output_dir=self.settings.output_dir,
+            model=self.settings.ollama_model,
+            failed=True,
+        )
+        self.state.output_path = filepath
