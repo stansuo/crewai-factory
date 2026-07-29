@@ -1,7 +1,7 @@
-"""Assemble and execute the content-generation crew.
+"""Assemble and execute the content-generation flow.
 
 This is the top-level orchestrator.  It wires together:
-  config → persona → agents → tasks → crew → output
+  config → persona → flow → output
 
 Callers (CLI, tests, future API) only need to call `run()`.
 """
@@ -11,14 +11,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from crewai import Crew, Process
 from loguru import logger
 
-from crewai_factory.agents import build_agents
 from crewai_factory.config import Settings
-from crewai_factory.output import save_post
+from crewai_factory.flow import ContentFlow
 from crewai_factory.persona import Persona, load_persona
-from crewai_factory.tasks import build_tasks
 
 
 @dataclass
@@ -32,12 +29,6 @@ class RunResult:
 
 def run(settings: Settings | None = None) -> RunResult:
     """Execute one full content-generation cycle.
-
-    1. Load settings and persona
-    2. Build agents and tasks
-    3. Kick off the crew (sequential)
-    4. Save output to disk
-
     Returns a RunResult with the generated content and file path.
     """
     settings = settings or Settings()
@@ -52,30 +43,24 @@ def run(settings: Settings | None = None) -> RunResult:
         persona.language,
     )
 
-    # ── Build pipeline ───────────────────────────────────────────
-    team = build_agents(persona, settings)
-    tasks = build_tasks(team, persona)
-
-    crew = Crew(
-        agents=[team.strategist, team.writer, team.editor],
-        tasks=tasks,
-        process=Process.sequential,
-        verbose=settings.verbose,
-    )
+    # ── Build ContentFlow ───────────────────────────────────────────
+    flow = ContentFlow(persona, settings)
 
     # ── Execute ──────────────────────────────────────────────────
     logger.info(
-        "Running crew with model '{}' at {}",
+        "Running flow with model '{}' at {}",
         settings.ollama_model,
         settings.ollama_base_url,
     )
-    result = crew.kickoff()
-    content = result.raw if hasattr(result, "raw") else str(result)
 
-    # ── Persist ──────────────────────────────────────────────────
-    output_path, _ = save_post(
-        content, persona, settings.output_dir, model=settings.ollama_model
-    )
+    flow.kickoff()
+
+    saved_content = flow.state.saved_content
+    output_path = flow.state.output_path
+
+    if saved_content is None or output_path is None:
+        raise RuntimeError("Content generation failed; no output saved.")
+
     logger.success("Post saved to {}", output_path)
 
-    return RunResult(content=content, persona=persona, output_path=output_path)
+    return RunResult(content=saved_content, persona=persona, output_path=output_path)
