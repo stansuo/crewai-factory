@@ -73,7 +73,7 @@ def run(settings: Settings | None = None) -> RunResult:
     content = result.raw if hasattr(result, "raw") else str(result)
 
     # ── Persist ──────────────────────────────────────────────────
-    output_path = save_post(
+    output_path, _ = save_post(
         content, persona, settings.output_dir, model=settings.ollama_model
     )
     logger.success("Post saved to {}", output_path)

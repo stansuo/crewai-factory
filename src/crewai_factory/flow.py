@@ -40,6 +40,9 @@ class ContentState(BaseModel):
     output_path: Path | None = Field(
         default=None, description="The path where the final post is saved."
     )
+    saved_content: str | None = Field(
+        default=None, description="The content that was saved to disk."
+    )
 
 
 class ContentFlow(Flow[ContentState]):

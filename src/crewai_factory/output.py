@@ -35,8 +35,8 @@ def save_post(
     *,
     now: datetime | None = None,
     failed: bool = False,
-) -> Path:
-    """Write a generated post to a markdown file and return its path.
+) -> tuple[Path, str]:
+    """Write a generated post to a markdown file and return its path and content.
 
     The output directory is created if it doesn't exist.
     """
@@ -57,4 +57,4 @@ def save_post(
     )
 
     filepath.write_text(header + content, encoding="utf-8")
-    return filepath
+    return (filepath, content)
