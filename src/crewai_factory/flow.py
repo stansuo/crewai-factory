@@ -193,19 +193,20 @@ class ContentFlow(Flow[ContentState]):
     @listen("save")
     def save_output(self) -> None:
         output_dir = self.settings.output_dir
-        filepath = save_post(
+        filepath, saved_content = save_post(
             content=self.state.post,
             persona=self.persona,
             output_dir=output_dir,
             model=self.settings.ollama_model,
         )
         self.state.output_path = filepath
+        self.state.saved_content = saved_content
 
     @listen("failed")
     def handle_failure(self) -> None:
         best = max(self.state.attempts, key=lambda a: a.score)
         content = best.content
-        filepath = save_post(
+        filepath, saved_content = save_post(
             content=content,
             persona=self.persona,
             output_dir=self.settings.output_dir,
@@ -213,3 +214,4 @@ class ContentFlow(Flow[ContentState]):
             failed=True,
         )
         self.state.output_path = filepath
+        self.state.saved_content = saved_content
