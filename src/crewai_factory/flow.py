@@ -87,7 +87,7 @@ class ContentFlow(Flow[ContentState]):
     def write_draft(self) -> None:
 
         if not self.state.topic:
-            raise ValueError("No topic generated yet. Cannot write draft.")
+            raise RuntimeError("No topic generated yet. Cannot write draft.")
 
         feedback = (
             self.state.verdict.feedback
@@ -157,11 +157,11 @@ class ContentFlow(Flow[ContentState]):
         result = crew.kickoff()
 
         if not isinstance(result, CrewOutput):
-            raise ValueError("Editor did not return a valid CrewOutput.")
+            raise RuntimeError("Editor did not return a valid CrewOutput.")
 
         verdict = result.pydantic
         if not isinstance(verdict, EditorVerdict):
-            raise ValueError("Editor did not return a valid EditorVerdict.")
+            raise RuntimeError("Editor did not return a valid EditorVerdict.")
         self.state.verdict = verdict
 
         cycle = len(self.state.attempts) + 1
@@ -179,7 +179,7 @@ class ContentFlow(Flow[ContentState]):
         verdict = self.state.verdict
         # Fail early if verdict is missing
         if verdict is None:
-            raise ValueError("No verdict available to route.")
+            raise RuntimeError("No verdict available to route.")
 
         passed = verdict.score >= self.settings.quality_threshold
 
