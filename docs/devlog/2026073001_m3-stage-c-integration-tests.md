@@ -1,4 +1,4 @@
-# 2026-07-31: Add mocked-Ollama integration tests for the ContentFlow (M3 Stage C)
+# 2026-07-30: Add mocked-Ollama integration tests for the ContentFlow (M3 Stage C)
 
 > **This devlog is public.** Do not include: secrets or their fragments,
 > internal hostnames/IPs, unresolved security issues of the live deployment,
@@ -214,7 +214,7 @@ integration tests); Stages D and E remain.
 
 ```
 Project: crewai-factory
-Date: 2026-07-31
+Date: 2026-07-30
 Latest progress:
   - Current phase: M3 (CrewAI Flow) on branch feat/m3-flow-skeleton.
     Stage C (integration tests) is DONE and make-ci-green, but NOT yet committed
@@ -282,7 +282,7 @@ For AI to be aware of:
       C. Integration tests with mocked Ollama: three paths —
          pass-first-try / retry-then-pass / cap-exhaustion — asserting
          state.attempts and the terminal branch taken (incl. saved_content
-         on the failure path)                                          — DONE 2026-07-31 (this session)
+         on the failure path)                                          — DONE 2026-07-30 (this session)
       D. Observability: `make demo` verbose log shows the retry count (DoD #5) — NEXT
       E. Wrap up: README/mermaid (flip the FAIL edge to the real loop),
          finalize devlog, ROADMAP reconciliation, PR -> squash merge   — pending
@@ -326,6 +326,3 @@ threshold is not met.
 ### Changelog — **no change until merge**
 `main` did not change today; all work is on `feat/m3-flow-skeleton`. The
 Changelog line lands when the M3 PR merges (Stage E).
-
----
-
