@@ -34,4 +34,5 @@ class Settings(BaseSettings):
 
     # ── Execution ────────────────────────────────────────────────
     max_agent_iterations: int = 3
+    quality_threshold: int = 85  # editor pass bar; gate is score >= this
     verbose: bool = True

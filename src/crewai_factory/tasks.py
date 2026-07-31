@@ -10,13 +10,31 @@ from __future__ import annotations
 from datetime import datetime
 
 from crewai import Task
+from pydantic import BaseModel, Field
 
 from crewai_factory.agents import AgentTeam
 from crewai_factory.persona import Persona
 
 
+class EditorVerdict(BaseModel):
+    """Structured verdict returned by the editor agent.
+
+    The editor only scores the post and writes feedback. Whether a post
+    *passes* is decided in code (score >= Settings.quality_threshold), not by
+    the editor, so the gate is deterministic and testable.
+    """
+
+    score: int = Field(ge=0, le=100, description="Quality score from 0 to 100.")
+    feedback: str = Field(description="Actionable revision notes for the writer.")
+
+
 def build_tasks(team: AgentTeam, persona: Persona) -> list[Task]:
-    """Return the ordered task list for a sequential crew run."""
+    """Return the ordered task list for a sequential crew run.
+
+    NOTE: this is the legacy sequential path, still active and untouched by
+    the M3 Flow work. It uses free-text editor output on purpose; the Flow
+    nodes use the structured EditorVerdict instead.
+    """
     today = datetime.now().strftime("%Y-%m-%d")
 
     task_strategise = Task(

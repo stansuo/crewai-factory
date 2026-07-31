@@ -1,15 +1,15 @@
 # crewai-factory Roadmap
 
-> **Version: v1.0** | **Last updated: 2026-07-15**
+> **Version: v1.0** | **Last updated: 2026-07-31**
 > Single source of truth for project milestones. Historical context lives in `docs/devlog/`.
 
 ---
 
 ## 1. TL;DR
 
-- **Current milestone**: M3 — upgrade to CrewAI Flow (retry-until-pass)
-- **Status**: All M3 entry conditions met. Pre-M3 hardening completed 2026-07-07 (Docker security, output correctness, CLI settings injection).
-- **Completed**: M1 ✅ foundation fixes, M2 ✅ modular package + engineering foundation, X API spike ✅ (auth + read/write verified), pre-M3 hardening ✅
+- **Current milestone**: M4 — X API integration + deployment
+- **Status**: M3 complete (all five DoD items met, 2026-07-31). M4 not yet started; entry conditions to be confirmed.
+- **Completed**: M1 ✅ foundation fixes, M2 ✅ modular package + engineering foundation, X API spike ✅ (auth + read/write verified), pre-M3 hardening ✅, M3 ✅ CrewAI Flow (retry-until-pass)
 - **Guiding principles**: security > maintainability > convenience; stabilize the text-only pipeline before adding features; GitHub Flow (feature branch → PR → main)
 
 ---
@@ -40,18 +40,20 @@ Python downgraded 3.13 → 3.12 for dependency compatibility; base project struc
 
 ---
 
-### M3 📋 Upgrade to CrewAI Flow
+### M3 ✅ Upgrade to CrewAI Flow
+
+**Completed**: 2026-07-31
 
 **Goal**: Replace the sequential process with CrewAI Flow to enable retry-until-pass and richer control logic.
 
 **Motivation**: In the current linear pipeline, when the editor rejects a draft, the run's final output is the rejection verdict itself — there is no loop back to the writer. Observed in real runs; this milestone closes that gap.
 
 **Definition of done** (all required):
-1. `@start` / `@listen` / `@router` replace `Process.sequential`
-2. Writer automatically retries when the editor rejects (retry-until-pass, configurable cap)
-3. Editor verdict uses structured output (`output_pydantic`, typed `EditorVerdict`); the router branches on typed fields, never free-text parsing
-4. Integration tests (with mocked Ollama) cover the full Flow paths
-5. `make demo` shows observable retry behavior (verbose log includes retry count)
+1. ✅`@start` / `@listen` / `@router` replace `Process.sequential`
+2. ✅Writer automatically retries when the editor rejects (retry-until-pass, configurable cap)
+3. ✅Editor verdict uses structured output (`output_pydantic`, typed `EditorVerdict`); the router branches on typed fields, never free-text parsing
+4. ✅Integration tests (with mocked Ollama) cover the full Flow paths
+5. ✅`make demo` shows observable retry behavior (verbose log includes retry count)
 
 **Key decisions** (settled):
 - CrewAI Flow (`@start` / `@listen` / `@router`) over Hierarchical Process — explicit, testable control flow
@@ -96,6 +98,11 @@ Python downgraded 3.13 → 3.12 for dependency compatibility; base project struc
 - Compose dev/prod separation design (decide during M4); revisit Ollama port exposure surface at the same time
 - Persona strategy: single-language vs bilingual account track (affects persona design and credential naming)
 - README demo section (GIF/asciinema + sample outputs) — record **after** M3 (so the demo shows the retry loop, not a rejection verdict)
+- Persistent file-log sink → M4: add a loguru file sink (rotation + retention) for post-hoc log inspection; location/rotation depend on the containerized deployment, so deferred until M4 design
+- Remove migration dead code (`build_tasks`, sequential-`Crew` helpers, orphaned tests) as an isolated PR
+- Verify/enable Dependabot security updates; revisit `dependabot.yml` grouping
+- Track chromadb CVE-2026-45829 (assessed unreachable — CrewAI memory not enabled); re-assess at M4 or if memory is turned on
+- Adopt draft PRs on feature branches so CI runs on every push
 
 ## 4. Decisions Log
 

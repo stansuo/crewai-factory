@@ -1,4 +1,4 @@
-.PHONY: run demo test lint typecheck ci clean docker-run docker-build
+.PHONY: run demo test test-cov lint format typecheck ci clean docker-run docker-build
 
 # ── Run locally ──────────────────────────────────────────────────
 
@@ -20,6 +20,10 @@ test-cov:
 lint:
 	uv run ruff check src/ tests/
 	uv run ruff format --check src/ tests/
+
+format:
+	uv run ruff format src/ tests/
+	uv run ruff check --fix src/ tests/
 
 typecheck:
 	uv run mypy src/
