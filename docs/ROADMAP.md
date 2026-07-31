@@ -1,6 +1,6 @@
 # crewai-factory Roadmap
 
-> **Version: v1.0** | **Last updated: 2026-07-31**
+> **Version: v1.1** | **Last updated: 2026-07-31**
 > Single source of truth for project milestones. Historical context lives in `docs/devlog/`.
 
 ---
@@ -124,7 +124,8 @@ Python downgraded 3.13 → 3.12 for dependency compatibility; base project struc
 ## 5. Changelog
 
 - **2026-07-15 (v1.0)**: Initial public roadmap, published with the repository.
+- **2026-07-31 (v1.1)**: M3 complete — CrewAI Flow (retry-until-pass) merged (#19). Backlog updated (file-log sink → M4, dead-code removal).
 
 ---
 
-*End of Roadmap v1.0*
+*End of Roadmap v1.1*
