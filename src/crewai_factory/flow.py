@@ -5,6 +5,7 @@ from pathlib import Path
 
 from crewai import Crew, CrewOutput, Process, Task
 from crewai.flow.flow import Flow, listen, or_, router, start
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from crewai_factory.agents import AgentTeam, build_agents
@@ -174,6 +175,13 @@ class ContentFlow(Flow[ContentState]):
             )
         )
 
+        logger.info(
+            "Attempt {}/{} — score {}",
+            cycle,
+            self.state.max_attempts,
+            verdict.score,
+        )
+
     @router(edit_draft)
     def route_verdict(self) -> str:
         verdict = self.state.verdict
@@ -184,10 +192,25 @@ class ContentFlow(Flow[ContentState]):
         passed = verdict.score >= self.settings.quality_threshold
 
         if passed:
+            logger.info(
+                "  → Attempt {}/{} passed, saving output",
+                self.state.attempts[-1].cycle,
+                self.state.max_attempts,
+            )
             return "save"
         elif len(self.state.attempts) < self.state.max_attempts:
+            logger.info(
+                "  → Attempt {}/{} score too low, retrying...",
+                self.state.attempts[-1].cycle,
+                self.state.max_attempts,
+            )
             return "retry"
         else:
+            logger.info(
+                "  → Attempt {}/{} failed, saving best attempt",
+                self.state.attempts[-1].cycle,
+                self.state.max_attempts,
+            )
             return "failed"
 
     @listen("save")
