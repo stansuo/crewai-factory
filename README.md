@@ -2,15 +2,20 @@
 
 ![CI](https://github.com/stansuo/crewai-factory/actions/workflows/ci.yml/badge.svg)
 
-A configurable multi-agent content generation framework. Three AI agents — **strategist**, **writer**, and **editor** — collaborate in a sequential pipeline to produce publish-ready social media posts, driven entirely by YAML persona files.
+A configurable multi-agent content generation framework. Three AI agents — **strategist**, **writer**, and **editor** — collaborate in a **retry-until-pass flow** to produce publish-ready social media posts, driven entirely by YAML persona files.
 
 ```mermaid
 flowchart LR
     S["Strategist<br/>picks topic"] --> W["Writer<br/>drafts post"]
-    W --> E{"Editor<br/>score ≥ 85?"}
-    E -->|PASS| O["Output<br/>.md file"]
-    E -.->|"FAIL — retry loop lands in M3"| W
+    W --> E["Editor<br/>scores post"]
+    E --> Q1{"score ≥ 85?"}
+    Q1 -->|PASS| O["Output<br/>.md file"]
+    Q1 -->|below bar| Q2{"attempts<br/>left?"}
+    Q2 -->|"retry"| W
+    Q2 -->|"cap reached"| O
 ```
+
+*Diamonds are code-level decisions (no LLM); boxes are agent steps.*
 
 ## Why this exists
 
@@ -149,7 +154,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full milestone plan. Current stat
 |---|---|---|
 | M1 | Foundation fixes (Python 3.12, base setup) | ✅ |
 | M2 | Modular package + engineering foundation (tests, CI, linting) | ✅ |
-| M3 | Upgrade to CrewAI Flow (retry-until-pass) | 📋 |
+| M3 | Upgrade to CrewAI Flow (retry-until-pass) | ✅ |
 | M4 | X API integration + deployment | 📋 |
 | M5+ | Performance tracking & BI dashboard, prompt iteration, image generation | 📋 |
 
