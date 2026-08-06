@@ -9,7 +9,7 @@ authors = [{ name = "StanS" }]
 keywords = ["crewai", "multi-agent", "llm", "content-generation", "ollama"]
 
 dependencies = [
-    "crewai>=1.15.2",
+    "crewai>=1.15.10",
     "loguru>=0.7",
     "pydantic>=2.11",
     "pydantic-settings>=2.9",
@@ -24,7 +24,7 @@ run-factory = "crewai_factory.__main__:main"
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=6.0",
-    "ruff>=0.15.21",
+    "ruff>=0.16.1",
     "mypy>=2.3.0",
     "types-PyYAML>=6.0",
 ]
