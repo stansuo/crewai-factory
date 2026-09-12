@@ -1,16 +1,16 @@
 # crewai-factory Roadmap
 
-> **Version: v1.1** | **Last updated: 2026-07-31**
+> **Version: v1.2** | **Last updated: 2026-09-12**
 > Single source of truth for project milestones. Historical context lives in `docs/devlog/`.
 
 ---
 
 ## 1. TL;DR
 
-- **Current milestone**: M4 — X API integration + deployment
-- **Status**: M3 complete (all five DoD items met, 2026-07-31). M4 not yet started; entry conditions to be confirmed.
+- **Current milestone**: M4a — Publish path, verified on dev
+- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition met (`main` green, dependencies current); work not yet started.
 - **Completed**: M1 ✅ foundation fixes, M2 ✅ modular package + engineering foundation, X API spike ✅ (auth + read/write verified), pre-M3 hardening ✅, M3 ✅ CrewAI Flow (retry-until-pass)
-- **Guiding principles**: security > maintainability > convenience; stabilize the text-only pipeline before adding features; GitHub Flow (feature branch → PR → main)
+- **Guiding principles**: security > maintainability > convenience; stabilize the text-only pipeline before adding features; GitHub Flow (feature branch → PR → main); public engine repo ships templates only — account-specific configuration lives in a private deployment repo
 
 ---
 
@@ -44,65 +44,104 @@ Python downgraded 3.13 → 3.12 for dependency compatibility; base project struc
 
 **Completed**: 2026-07-31
 
-**Goal**: Replace the sequential process with CrewAI Flow to enable retry-until-pass and richer control logic.
+CrewAI Flow (`@start` / `@listen` / `@router`) replaced `Process.sequential`; writer retries until the editor passes it (configurable cap); editor verdict is structured (`EditorVerdict`, `output_pydantic`) and the router branches on typed fields; integration tests with mocked Ollama cover all Flow paths; `make demo` shows the retry count. Details in `docs/devlog/`.
 
-**Motivation**: In the current linear pipeline, when the editor rejects a draft, the run's final output is the rejection verdict itself — there is no loop back to the writer. Observed in real runs; this milestone closes that gap.
+---
+
+### M4a 🔨 Publish path, verified on dev
+
+**Goal**: A draft can only reach X after passing deterministic rules and an explicit human approval. `dry_run` is the default publish mode everywhere. Every publish attempt is recorded in a ledger that later milestones build on. Everything runs on the dev machine.
+
+**Why split M4** (decided 2026-09-12): the original M4 bundled the X client and review gate (testable on dev) with deployment (credentials on a server for the first time). Splitting lets "first real post" and "first credentials on the server" happen as separate, individually reversible events.
+
+**Not in scope**: hardening the editor verdict. With a human approval gate in front of every post, editor drift costs reading time but cannot publish a bad post; judge calibration is prompt iteration and belongs to M5a, which uses M4b's shadow-mode data.
+
+**Entry condition**: ✅ `main` green, dependencies current (2026-09-12).
+
+**Plan** — three PRs, each independently verifiable and revertable:
+
+1. **Deterministic guard** — `guard.py`, pure functions, no LLM. Three rules: length within `persona.max_length` using X's weighted count (CJK = 2, URL = 23; `max_length` redefined as "X weighted units" and documented in the persona schema); no placeholders / meta-commentary; not a near-duplicate of recent published posts (from the ledger). Runs inside `edit_draft` before the editor crew is called; on violation it synthesises `EditorVerdict(score=0, feedback=<violations>)` so the existing router retries — no new flow topology. The same guard runs again immediately before any live publish.
+2. **X client + `dry_run` default + SQLite ledger** — `Settings` gains `X_*` fields as `SecretStr` (closes the 2026-07-27 open item on unvalidated keys) and `publish_mode: "dry_run" | "live"` defaulting to `dry_run`. `x_client.py` posts via OAuth 1.0a user context (as in the spike). `ledger.py` uses stdlib `sqlite3`, one file, one table `posts` for now. SQLite over jsonl because the flow needs an update (fill in `tweet_id` after posting), M5b needs a second table joined on `tweet_id`, and two processes may write concurrently.
+   - `posts` columns, **proposed, not yet reviewed — finalise at PR 2 kickoff**: `id, created_at, persona, topic, content_hash, content_path, editor_score, mode, approved_at, tweet_id, posted_at, http_status`. No M5 columns are pre-built.
+3. **CLI approval and publish** — `python -m crewai_factory publish <draft.md>` reads a saved draft, re-runs the guard, posts, and updates the ledger row. Nothing publishes without this command. Publishing lives outside the Flow: `crew.run()` stays "generate and save", the Flow and its tests are untouched, and publishing is an explicit, separately triggerable step — the shape both the review gate and M4b's shadow mode need.
 
 **Definition of done** (all required):
-1. ✅`@start` / `@listen` / `@router` replace `Process.sequential`
-2. ✅Writer automatically retries when the editor rejects (retry-until-pass, configurable cap)
-3. ✅Editor verdict uses structured output (`output_pydantic`, typed `EditorVerdict`); the router branches on typed fields, never free-text parsing
-4. ✅Integration tests (with mocked Ollama) cover the full Flow paths
-5. ✅`make demo` shows observable retry behavior (verbose log includes retry count)
+1. Guard merged with tests; a rule-violating draft cannot reach save or publish
+2. `X_*` settings validated at startup; `publish_mode` defaults to `dry_run`
+3. Ledger row written on every publish attempt in both modes, with `tweet_id` filled in on live success
+4. One end-to-end live post from dev via the CLI approval path, using a demo persona and a non-sensitive test account with its own X developer app
 
-**Key decisions** (settled):
-- CrewAI Flow (`@start` / `@listen` / `@router`) over Hierarchical Process — explicit, testable control flow
-- retry-until-pass as default; best-of-N as an optional flag
-- Structured editor verdict replaces prompt-format conventions
+**Optional spike** (any time, no dependency): `scripts/evals/judge_probe.py` — run the editor N=10 times on K=5 fixed drafts and record the score spread per draft in a devlog. ~50 cloud-model calls, no code change, not in CI.
 
 ---
 
-### M4 📋 X API integration + deployment
+### M4b 📋 Production deployment
 
-**Goal**: Automated posting via X API v2 + human review gate + production deployment on an always-on home server.
+**Goal**: Unattended runs on the always-on home server, shadow mode first, then live.
 
-**De-risked in advance** (2026-07-05 spike):
-- X API v2 read/write verified (`GET /2/users/me`, `POST /2/tweets`, OAuth 1.0a user context)
-- Cost datapoint: ~0.02 USD / post (monthly cost model to be built during M4 scheduling design)
-- Spike scripts kept under `scripts/spikes/` for reference; the production X client will be built with `pydantic-settings`-managed credentials
-
-**Deployment context**:
-- **Production**: always-on Linux home server; Ollama runs in Docker calling Ollama cloud models
-- **Development**: WSL2 laptop
-- Design implication: compose needs dev/prod separation (dev reaches host Ollama via host-gateway; prod reaches the Ollama container over an internal network). Mechanism (override file vs profiles) to be decided during M4 design.
-- Cloud-model usage means the server holds outbound credentials → credential management is in M4 secrets scope (X API keys likewise)
+**Entry conditions**:
+1. VPN link to the home server stable for several days (direct connection, not relayed)
+2. Docker + Ollama container on the server can call a cloud model once
+3. X API credentials re-verified (`scripts/spikes/test_x_api_get.py`)
+4. Zero open items in private security notes
+5. M4a DoD met
 
 **Key decisions** (settled):
-- Ollama deployed as separate infra, exposed over VPN (Tailscale) only — never on the public internet
+- Ollama deployed as separate infra, exposed over VPN only — never on the public internet
 - Trigger mechanism: single-run container + systemd timer
-- Human review gate: Telegram Bot vs Web UI, decided after M3 is validated
+- **Repo split** (2026-09-12): this public repo stays the generic engine and ships templates only (`docker-compose.prod.yml` skeleton, systemd `.service` / `.timer` examples). A separate private deployment repo holds real personas, the real compose override, the real timer schedule, and pins this repo by git tag or image tag. Secrets live only in the server's `.env`. Public devlogs, commits and README demos reference demo personas only. The ledger DB and all metrics data stay on the server.
+- One X developer app per account; keys never shared across accounts
+- Human review gate: CLI approval (M4a PR 3) is the baseline. A Telegram bot upgrade, if built, polls `getUpdates` (outbound only, no webhook) from the publisher run so it stays compatible with single-run + timer and no inbound exposure. A Web UI is not planned (requires an inbound service).
+
+**Plan**:
+- Prod compose: Ollama as its own service on an internal network; the app reaches it by service name; no host port for Ollama. Override file vs profiles decided here.
+- systemd timer → `docker compose run --rm` single-run container
+- loguru file sink with rotation + retention
+- CrewAI telemetry / tracing: decide whether to disable; document how
+- chromadb CVE-2026-45829 re-assessment (CrewAI memory still off → unreachable?)
+- **Shadow mode**: deploy with `publish_mode=dry_run`, timer on, for at least one week; review drafts daily and record approve / reject in the ledger (this is M5a's calibration dataset). Only then flip to `live`. Separates "deployment broke" from "content is bad".
+
+**Definition of done** (draft):
+1. Timer fires on schedule for 7 days in `dry_run` with no failed runs
+2. Logs readable on the server (file sink)
+3. First live post from the server via the approval path
 
 ---
 
-### M5+ 📋 Advanced features
+### M5 📋 Two feedback loops, then advanced features
 
-**Goal**: Performance tracking + lightweight BI dashboard → prompt iteration → multi-model A/B → image generation.
+Replaces the earlier single "performance tracking" line. The two loops answer different questions, use different data, and run on different time scales.
 
-**Order rationale**: performance tracking (pass rate, retry counts, per-persona/topic effectiveness) comes **before** image generation — it doubles as an evaluation story and plays to the project's data-analysis strengths, while image generation is commodity API work. Prompt iteration is deliberately deferred until the foundation is stable: tuning prompts on an unstable pipeline is guesswork.
+#### M5a — Inner loop: quality-gate calibration
+
+- **Question**: does the editor's judgement agree with the human's?
+- **Data**: shadow-mode ledger rows — `editor_score` vs human approve / reject
+- **Work**: measure agreement rate; then, as evidence dictates: editor `temperature=0` (per-agent LLM), rubric booleans in `EditorVerdict` (`voice_ok`, `hook_ok`, `no_red_flags`) with gate = all booleans AND score ≥ threshold, majority-of-3 only if still noisy. Remove the stale free-text `Format: "Score: XX | …"` line from demo personas' editor backstory.
+- **Exit**: agreement rate recorded before / after in a devlog
+
+#### M5b — Outer loop: audience feedback, per-post time series
+
+- **Question**: how does each post perform over time, and which topics / styles perform better?
+- **Data model**: second table `metrics_snapshots(tweet_id, captured_at, hours_since_post, impressions, likes, replies, reposts, quotes, bookmarks)` — many rows per post
+- **Collector**: its own single-run container + hourly systemd timer. Selects posts younger than 72 h (then daily until day 7), fetches `GET /2/tweets?ids=…&tweet.fields=public_metrics` (up to 100 ids per call → one call per hour regardless of post count), inserts one snapshot per post. The 1 / 6 / 12 / 24 / 48 / 72 h view is derived at analysis time from the nearest snapshot. Read-scope permission, `non_public_metrics` availability and read pricing to be verified against current X docs at M5b start.
+- **Order**: collect and *see* first (pandas / small dashboard) → human adjusts persona or prompts with data → semi-automatic (e.g. top performers as writer few-shot examples) → fully automatic prompt rewriting last, and human-supervised. On a small account impressions are dominated by algorithm noise; reacting too early teaches engagement bait and drifts the persona.
+
+#### M5c — Advanced features
+
+Multi-model A/B → image generation → short video. Order unchanged: evaluation and feedback infrastructure first, commodity generation work later.
 
 ---
 
 ## 3. Backlog
 
-- home server: verify VPN connectivity stability (before M4)
-- Compose dev/prod separation design (decide during M4); revisit Ollama port exposure surface at the same time
-- Persona strategy: single-language vs bilingual account track (affects persona design and credential naming)
-- README demo section (GIF/asciinema + sample outputs) — record **after** M3 (so the demo shows the retry loop, not a rejection verdict)
-- Persistent file-log sink → M4: add a loguru file sink (rotation + retention) for post-hoc log inspection; location/rotation depend on the containerized deployment, so deferred until M4 design
-- Remove migration dead code (`build_tasks`, sequential-`Crew` helpers, orphaned tests) as an isolated PR
-- Verify/enable Dependabot security updates; revisit `dependabot.yml` grouping
-- Track chromadb CVE-2026-45829 (assessed unreachable — CrewAI memory not enabled); re-assess at M4 or if memory is turned on
+- Remove migration dead code (`build_tasks`, sequential-`Crew` helpers, orphaned tests) as an isolated PR — ideally before M5a touches the verdict shape
+- `dependabot.yml`: add a `types-*` pattern to the `minor-and-patch` group so type-stub bumps stop arriving as separate PRs
+- Verify/enable Dependabot security updates
+- Track chromadb CVE-2026-45829 (assessed unreachable — CrewAI memory not enabled); re-assess in M4b or if memory is turned on
 - Adopt draft PRs on feature branches so CI runs on every push
+- README demo section (GIF/asciinema + sample outputs) — record with demo personas only
+- Persona strategy: single-language vs bilingual account track — now a private-deployment-repo concern; the public engine only needs `max_length` semantics (M4a PR 1)
+- crewai deprecation warnings (`function_calling_llm`, `allow_code_execution`, `reasoning`) observed on 1.15.16 — not used by this project; review release notes carefully on the next crewai major bump
 
 ## 4. Decisions Log
 
@@ -118,6 +157,10 @@ Python downgraded 3.13 → 3.12 for dependency compatibility; base project struc
 | 2026-06-04 | Tests/CI scope merged into M2 | Milestone renumbering |
 | 2026-06-04 | English README + MIT license | Portfolio visibility |
 | 2026-07-07 | M5+ order: BI performance tracking before image generation | M5+ internal ordering |
+| 2026-09-12 | M4 split into M4a (publish path on dev) and M4b (production deployment) | Milestone structure |
+| 2026-09-12 | Public engine repo ships templates only; account-specific config in a private deployment repo | M4b architecture, security boundary |
+| 2026-09-12 | Judge hardening moved from M4 to M5a; M5 split into inner loop (M5a) and outer loop (M5b, per-post time series) | Milestone structure, M5 ordering |
+| 2026-09-12 | Ledger is SQLite (`posts` in M4a, `metrics_snapshots` in M5b) | Data model for M4–M5 |
 
 ---
 
@@ -125,7 +168,8 @@ Python downgraded 3.13 → 3.12 for dependency compatibility; base project struc
 
 - **2026-07-15 (v1.0)**: Initial public roadmap, published with the repository.
 - **2026-07-31 (v1.1)**: M3 complete — CrewAI Flow (retry-until-pass) merged (#19). Backlog updated (file-log sink → M4, dead-code removal).
+- **2026-09-12 (v1.2)**: M4 split into M4a / M4b with entry conditions and DoD; M5 restructured into M5a (inner loop) / M5b (outer loop) / M5c; four decisions logged; Backlog refreshed after dependabot sweep (#24, #25).
 
 ---
 
-*End of Roadmap v1.1*
+*End of Roadmap v1.2*
