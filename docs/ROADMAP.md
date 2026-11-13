@@ -1,6 +1,6 @@
 # crewai-factory Roadmap
 
-> **Version: v1.2** | **Last updated: 2026-09-12**
+> **Version: v1.3** | **Last updated: 2026-11-13**
 > Single source of truth for project milestones. Historical context lives in `docs/devlog/`.
 
 ---
@@ -8,7 +8,7 @@
 ## 1. TL;DR
 
 - **Current milestone**: M4a — Publish path, verified on dev
-- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition met (`main` green, dependencies current); work not yet started.
+- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition re-verified 2026-11-13 after a two-month pause and a dependency sweep (#46); work not yet started.
 - **Completed**: M1 ✅ foundation fixes, M2 ✅ modular package + engineering foundation, X API spike ✅ (auth + read/write verified), pre-M3 hardening ✅, M3 ✅ CrewAI Flow (retry-until-pass)
 - **Guiding principles**: security > maintainability > convenience; stabilize the text-only pipeline before adding features; GitHub Flow (feature branch → PR → main); public engine repo ships templates only — account-specific configuration lives in a private deployment repo
 
@@ -56,7 +56,7 @@ CrewAI Flow (`@start` / `@listen` / `@router`) replaced `Process.sequential`; wr
 
 **Not in scope**: hardening the editor verdict. With a human approval gate in front of every post, editor drift costs reading time but cannot publish a bad post; judge calibration is prompt iteration and belongs to M5a, which uses M4b's shadow-mode data.
 
-**Entry condition**: ✅ `main` green, dependencies current (2026-09-12).
+**Entry condition**: ✅ `main` green, dependencies current (first met 2026-09-12; re-verified 2026-11-13 after #46).
 
 **Plan** — three PRs, each independently verifiable and revertable:
 
@@ -135,9 +135,9 @@ Multi-model A/B → image generation → short video. Order unchanged: evaluatio
 ## 3. Backlog
 
 - Remove migration dead code (`build_tasks`, sequential-`Crew` helpers, orphaned tests) as an isolated PR — ideally before M5a touches the verdict shape
-- `dependabot.yml`: add a `types-*` pattern to the `minor-and-patch` group so type-stub bumps stop arriving as separate PRs
-- Verify/enable Dependabot security updates
-- Track chromadb CVE-2026-45829 (assessed unreachable — CrewAI memory not enabled); re-assess in M4b or if memory is turned on
+- Confirm in repo Settings that Dependabot security updates are enabled — inferred from 13 security-fix PRs opened Sep–Nov 2026 (superseded by #46), not yet checked in Settings
+- Track chromadb CVE-2026-45829 (assessed unreachable — CrewAI memory not enabled). Lockfile moved chromadb 1.1.1 → 1.5.9 in #46; check the Security tab for whether the alert closed. If it is still open, re-assess in M4b or if memory is turned on
+- Confirm the `type-stubs` Dependabot group (#47) works when the next `types-*` release arrives — config is merged, behaviour unverified
 - Adopt draft PRs on feature branches so CI runs on every push
 - README demo section (GIF/asciinema + sample outputs) — record with demo personas only
 - Persona strategy: single-language vs bilingual account track — now a private-deployment-repo concern; the public engine only needs `max_length` semantics (M4a PR 1)
@@ -169,7 +169,8 @@ Multi-model A/B → image generation → short video. Order unchanged: evaluatio
 - **2026-07-15 (v1.0)**: Initial public roadmap, published with the repository.
 - **2026-07-31 (v1.1)**: M3 complete — CrewAI Flow (retry-until-pass) merged (#19). Backlog updated (file-log sink → M4, dead-code removal).
 - **2026-09-12 (v1.2)**: M4 split into M4a / M4b with entry conditions and DoD; M5 restructured into M5a (inner loop) / M5b (outer loop) / M5c; four decisions logged; Backlog refreshed after dependabot sweep (#24, #25).
+- **2026-11-13 (v1.3)**: Dependency sweep after a two-month pause — 14 open Dependabot PRs consolidated into one lockfile bump (#46); `type-stubs` Dependabot group added (#47). M4a entry condition re-verified. Backlog updated: `types-*` item done, security-updates and chromadb items reworded with what is and is not verified.
 
 ---
 
-*End of Roadmap v1.2*
+*End of Roadmap v1.3*
