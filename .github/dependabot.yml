@@ -6,6 +6,11 @@ updates:
     schedule:
       interval: "weekly"
     groups:
+      # Type stubs use four-part versions (e.g. 6.0.12.20260906) that are not
+      # classified as minor/patch, so they fall outside the group below and
+      # arrive one PR each. Groups match in order; this one must come first.
+      type-stubs:
+        patterns: ["types-*"]
       # Bundle minor/patch bumps into one PR to reduce noise;
       # major versions still get individual PRs for careful review.
       minor-and-patch:
