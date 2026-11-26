@@ -34,12 +34,22 @@ push.
 
 ## Dependabot
 
-`.github/dependabot.yml` groups minor and patch updates to reduce noise, and
-leaves major versions as individual PRs for review.
+`.github/dependabot.yml` runs version updates monthly. It groups `types-*`
+stubs into one PR, groups minor and patch updates into another, and leaves
+major versions as individual PRs for review.
 
-Observed behaviour: transitive lockfile updates still arrive as individual PRs
-regardless of the grouping. The likely cause is that grouping applies to direct
-dependencies only — inferred from behaviour, not verified against the docs.
+Dependabot opens two kinds of PR, and only one of them follows this file:
+
+- **Version updates** follow `dependabot.yml`: its schedule and its groups.
+- **Security updates** are triggered by alerts. They ignore the schedule,
+  target the minimum patched version, can bump transitive dependencies, and
+  arrive as individual PRs that the groups above do not batch.
+
+That distinction explains the observed behaviour that single-package
+transitive PRs keep arriving despite the grouping: they are security updates.
+Recognise one by the "automated security fix" note in the PR body; it carries
+no `security` label. This is inferred from PR bodies and behaviour, not
+verified against the Dependabot docs.
 
 For handling the resulting PRs and judging their security impact, see
 `.claude/rules/security.md`.
