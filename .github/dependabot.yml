@@ -3,8 +3,11 @@ updates:
   # Python dependencies managed by uv (watches pyproject.toml / uv.lock)
   - package-ecosystem: "uv"
     directory: "/"
+    # Monthly keeps version-update PRs to one batch per month. Security
+    # updates are alert-driven and, as understood (not yet checked against
+    # the Dependabot docs), do not follow this schedule.
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       # Type stubs use four-part versions (e.g. 6.0.12.20260906) that are not
       # classified as minor/patch, so they fall outside the group below and
@@ -20,4 +23,4 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
