@@ -1,6 +1,6 @@
 # crewai-factory Roadmap
 
-> **Version: v1.3** | **Last updated: 2026-11-13**
+> **Version: v1.4** | **Last updated: 2026-11-26**
 > Single source of truth for project milestones. Historical context lives in `docs/devlog/`.
 
 ---
@@ -8,7 +8,7 @@
 ## 1. TL;DR
 
 - **Current milestone**: M4a — Publish path, verified on dev
-- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition re-verified 2026-11-13 after a two-month pause and a dependency sweep (#46); work not yet started.
+- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition re-verified 2026-11-26 after clearing the Dependabot queue (#51–#55); work not yet started. Dependabot version updates now run monthly (#53).
 - **Completed**: M1 ✅ foundation fixes, M2 ✅ modular package + engineering foundation, X API spike ✅ (auth + read/write verified), pre-M3 hardening ✅, M3 ✅ CrewAI Flow (retry-until-pass)
 - **Guiding principles**: security > maintainability > convenience; stabilize the text-only pipeline before adding features; GitHub Flow (feature branch → PR → main); public engine repo ships templates only — account-specific configuration lives in a private deployment repo
 
@@ -56,12 +56,13 @@ CrewAI Flow (`@start` / `@listen` / `@router`) replaced `Process.sequential`; wr
 
 **Not in scope**: hardening the editor verdict. With a human approval gate in front of every post, editor drift costs reading time but cannot publish a bad post; judge calibration is prompt iteration and belongs to M5a, which uses M4b's shadow-mode data.
 
-**Entry condition**: ✅ `main` green, dependencies current (first met 2026-09-12; re-verified 2026-11-13 after #46).
+**Entry condition**: ✅ `main` green, dependencies current (first met 2026-09-12; re-verified 2026-11-13 after #46 and 2026-11-26 after #51–#55).
 
 **Plan** — three PRs, each independently verifiable and revertable:
 
 1. **Deterministic guard** — `guard.py`, pure functions, no LLM. Three rules: length within `persona.max_length` using X's weighted count (CJK = 2, URL = 23; `max_length` redefined as "X weighted units" and documented in the persona schema); no placeholders / meta-commentary; not a near-duplicate of recent published posts (from the ledger). Runs inside `edit_draft` before the editor crew is called; on violation it synthesises `EditorVerdict(score=0, feedback=<violations>)` so the existing router retries — no new flow topology. The same guard runs again immediately before any live publish.
 2. **X client + `dry_run` default + SQLite ledger** — `Settings` gains `X_*` fields as `SecretStr` (closes the 2026-07-27 open item on unvalidated keys) and `publish_mode: "dry_run" | "live"` defaulting to `dry_run`. `x_client.py` posts via OAuth 1.0a user context (as in the spike). `ledger.py` uses stdlib `sqlite3`, one file, one table `posts` for now. SQLite over jsonl because the flow needs an update (fill in `tweet_id` after posting), M5b needs a second table joined on `tweet_id`, and two processes may write concurrently.
+   - **OAuth 1.0a library must be declared** in `pyproject.toml`. The spikes (`scripts/spikes/test_x_api_*.py`) import `requests_oauthlib`, which was never declared and arrived only via chromadb; it left the lockfile with chromadb in #54, so the spikes fail until PR 2 moves them onto the declared library.
    - `posts` columns, **proposed, not yet reviewed — finalise at PR 2 kickoff**: `id, created_at, persona, topic, content_hash, content_path, editor_score, mode, approved_at, tweet_id, posted_at, http_status`. No M5 columns are pre-built.
 3. **CLI approval and publish** — `python -m crewai_factory publish <draft.md>` reads a saved draft, re-runs the guard, posts, and updates the ledger row. Nothing publishes without this command. Publishing lives outside the Flow: `crew.run()` stays "generate and save", the Flow and its tests are untouched, and publishing is an explicit, separately triggerable step — the shape both the review gate and M4b's shadow mode need.
 
@@ -82,7 +83,7 @@ CrewAI Flow (`@start` / `@listen` / `@router`) replaced `Process.sequential`; wr
 **Entry conditions**:
 1. VPN link to the home server stable for several days (direct connection, not relayed)
 2. Docker + Ollama container on the server can call a cloud model once
-3. X API credentials re-verified (`scripts/spikes/test_x_api_get.py`)
+3. X API credentials re-verified (`scripts/spikes/test_x_api_get.py` — runnable again only after M4a PR 2 declares the OAuth library)
 4. Zero open items in private security notes
 5. M4a DoD met
 
@@ -98,7 +99,7 @@ CrewAI Flow (`@start` / `@listen` / `@router`) replaced `Process.sequential`; wr
 - systemd timer → `docker compose run --rm` single-run container
 - loguru file sink with rotation + retention
 - CrewAI telemetry / tracing: decide whether to disable; document how
-- chromadb CVE-2026-45829 re-assessment (CrewAI memory still off → unreachable?)
+- Vector store: chromadb is no longer installed (optional extra since crewai 1.15.44, removed in #54). Never run a Chroma server: four server-side CVEs (incl. pre-auth RCE CVE-2026-45829) have no patched version as of 2026-11-26. If CrewAI memory is enabled later (M5), assess whichever store it pulls in (`qdrant-client` is now a transitive dependency)
 - **Shadow mode**: deploy with `publish_mode=dry_run`, timer on, for at least one week; review drafts daily and record approve / reject in the ledger (this is M5a's calibration dataset). Only then flip to `live`. Separates "deployment broke" from "content is bad".
 
 **Definition of done** (draft):
@@ -135,9 +136,8 @@ Multi-model A/B → image generation → short video. Order unchanged: evaluatio
 ## 3. Backlog
 
 - Remove migration dead code (`build_tasks`, sequential-`Crew` helpers, orphaned tests) as an isolated PR — ideally before M5a touches the verdict shape
-- Confirm in repo Settings that Dependabot security updates are enabled — inferred from 13 security-fix PRs opened Sep–Nov 2026 (superseded by #46), not yet checked in Settings
-- Track chromadb CVE-2026-45829 (assessed unreachable — CrewAI memory not enabled). Lockfile moved chromadb 1.1.1 → 1.5.9 in #46; check the Security tab for whether the alert closed. If it is still open, re-assess in M4b or if memory is turned on
-- Confirm the `type-stubs` Dependabot group (#47) works when the next `types-*` release arrives — config is merged, behaviour unverified
+- Confirm the four chromadb Dependabot alerts (alert numbers 7, 48, 49, 50 — not PRs) closed as fixed after #54 removed chromadb from the lockfile. If any stay open, check whether chromadb re-entered the dependency tree
+- `type-stubs` Dependabot group (#47) did not apply to the first `types-*` release after it merged (#55 arrived as a solo update). Read the Dependabot job log for that run before changing the config
 - Adopt draft PRs on feature branches so CI runs on every push
 - README demo section (GIF/asciinema + sample outputs) — record with demo personas only
 - Persona strategy: single-language vs bilingual account track — now a private-deployment-repo concern; the public engine only needs `max_length` semantics (M4a PR 1)
@@ -169,8 +169,9 @@ Multi-model A/B → image generation → short video. Order unchanged: evaluatio
 - **2026-07-15 (v1.0)**: Initial public roadmap, published with the repository.
 - **2026-07-31 (v1.1)**: M3 complete — CrewAI Flow (retry-until-pass) merged (#19). Backlog updated (file-log sink → M4, dead-code removal).
 - **2026-09-12 (v1.2)**: M4 split into M4a / M4b with entry conditions and DoD; M5 restructured into M5a (inner loop) / M5b (outer loop) / M5c; four decisions logged; Backlog refreshed after dependabot sweep (#24, #25).
+- **2026-11-26 (v1.4)**: Dependabot queue cleared (#51, #52, #54, #55); version updates moved to monthly (#53). crewai 1.15.44 made chromadb an optional extra, removing it and its four unpatched alerts from the tree. M4a PR 2 now also has to fix the spike scripts' undeclared OAuth dependency. Backlog: security-updates item closed (#51 is a security-update PR), chromadb and `type-stubs` items reworded.
 - **2026-11-13 (v1.3)**: Dependency sweep after a two-month pause — 14 open Dependabot PRs consolidated into one lockfile bump (#46); `type-stubs` Dependabot group added (#47). M4a entry condition re-verified. Backlog updated: `types-*` item done, security-updates and chromadb items reworded with what is and is not verified.
 
 ---
 
-*End of Roadmap v1.3*
+*End of Roadmap v1.4*
