@@ -89,6 +89,10 @@ still next.
   `requests-oauthlib`, bcrypt, the OTLP gRPC exporter, uvloop, and others.
   `uv.lock` went from about 152 packages to 135. `qdrant-client` 1.14.3 is new,
   a direct dependency of crewai.
+- `[Modify]` `.github/dependabot.yml` comment and `.claude/rules/github-actions.md`:
+  replaced the "not yet checked against the docs" wording with what the
+  Dependabot docs actually say, and recorded the `type-stubs` gap (this
+  devlog's PR).
 
 ## 3. Issues & Risks
 
