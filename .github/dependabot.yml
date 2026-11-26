@@ -3,9 +3,9 @@ updates:
   # Python dependencies managed by uv (watches pyproject.toml / uv.lock)
   - package-ecosystem: "uv"
     directory: "/"
-    # Monthly keeps version-update PRs to one batch per month. Security
-    # updates are alert-driven and, as understood (not yet checked against
-    # the Dependabot docs), do not follow this schedule.
+    # Monthly keeps version-update PRs to one batch per month. The schedule
+    # governs version updates only; security updates are triggered by alerts
+    # and still arrive as soon as a patched version exists.
     schedule:
       interval: "monthly"
     groups:
