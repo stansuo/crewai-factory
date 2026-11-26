@@ -1,7 +1,7 @@
 # 2026-11-26: Clear the Dependabot queue, move version updates to monthly, and see chromadb leave the dependency tree
 
 **Status**: Completed
-**Related commits / PRs**: `#51` (`bd78b12`), `#52` (`e83125d`), `#53` (`3619e68`), `#55` (`721147c`), `#54` (`a277604`)
+**Related commits / PRs**: `#51` (`bd78b12`), `#52` (`e83125d`), `#53` (`3619e68`), `#55` (`721147c`), `#54` (`a277604`), `#56` (this devlog), `#57` (ROADMAP v1.4, `4894e52`)
 
 ---
 
@@ -168,9 +168,9 @@ still next.
   spikes onto it
 - [ ] Stan: confirm the four chromadb alerts closed in the Security tab
 - [ ] Find out why the `type-stubs` group did not apply to #55
-- [ ] ROADMAP check (needs Stan's approval): backlog items on chromadb,
-  `type-stubs`, and Dependabot security updates are out of date; see Open
-  Questions
+- [x] ROADMAP check: v1.4 merged in #57 with Stan's approval. Milestones
+  unchanged (M4a not started); backlog updated (security-updates item
+  closed, chromadb and `type-stubs` reworded); Decisions Log: no change
 
 ## 7. Open Questions
 - Why did the `type-stubs` group not catch `types-pyyaml`? The docs say it
@@ -190,8 +190,9 @@ Date: 2026-11-26
 Latest progress:
   - Current phase: M4a (publish path, verified on dev) — planned, no code yet
   - Completed today: Dependabot queue cleared (#51, #52, #54, #55);
-    version updates moved to monthly + github-actions rule fixed (#53)
-  - In progress: nothing. main at a277604, make ci green (28 tests)
+    version updates moved to monthly + github-actions rule fixed (#53);
+    this devlog (#56); ROADMAP v1.4 (#57)
+  - In progress: nothing. No open PRs; make ci green (28 tests)
 
 Current architecture summary:
   - src/crewai_factory/: config, persona, agents, tasks, crew, flow, output
