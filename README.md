@@ -99,7 +99,7 @@ A persona is a single YAML file that configures the entire pipeline:
 name: "Your Persona Name"
 platform: "X (Twitter)"
 language: "en"
-max_length: 280
+max_length: 280  # X weighted units (CJK = 2, URL = 23)
 
 voice:
   tone: "your desired tone"
@@ -120,6 +120,22 @@ editor:
   goal: "What the editor should enforce"
   backstory: "The editor's detailed scoring criteria"
 ```
+
+The offline draft guard uses NFC and the single- and double-weight ranges in
+[twitter-text v3](https://github.com/twitter/twitter-text/blob/master/config/v3.json).
+It counts standalone ASCII links with one domain label (optionally prefixed by
+`www.`), a supported suffix (com, org, net, edu, gov, io, dev, app, co, uk,
+tw, jp), and a simple path as 23 units. Explicit HTTP(S) links may also have
+simple alphanumeric query parameters. A final sentence period counts separately.
+
+For t.co, internationalized names, unsupported forms, and links over 4,000
+characters, the guard keeps the literal weight and reserves 23 extra units per
+internal dot between non-whitespace characters, including 。, ．, and ｡. This
+allows for a platform parser wrapping only part of a token. A valid draft
+near the limit may need shortening, for example when it contains a filename,
+email address, decimal number, or CJK sentences without a space after 。. The TW,
+US and JP flags, keycaps, woman/man technologist emoji, selected skin-tone gestures,
+and emoji heart count as two units. Other sequences use code-point weights.
 
 Drop the file in `personas/` and pass `--persona personas/your-file.yaml`. No code changes needed.
 

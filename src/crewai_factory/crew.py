@@ -8,6 +8,7 @@ Callers (CLI, tests, future API) only need to call `run()`.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +28,9 @@ class RunResult:
     output_path: Path | None
 
 
-def run(settings: Settings | None = None) -> RunResult:
+def run(
+    settings: Settings | None = None, *, recent_posts: Sequence[str] = ()
+) -> RunResult:
     """Execute one full content-generation cycle.
     Returns a RunResult with the generated content and file path.
     """
@@ -44,7 +47,7 @@ def run(settings: Settings | None = None) -> RunResult:
     )
 
     # ── Build ContentFlow ───────────────────────────────────────────
-    flow = ContentFlow(persona, settings)
+    flow = ContentFlow(persona, settings, recent_posts=recent_posts)
 
     # ── Execute ──────────────────────────────────────────────────
     logger.info(

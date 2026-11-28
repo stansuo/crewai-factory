@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── Schema ────────────────────────────────────────────────────────
 
@@ -37,7 +37,10 @@ class Persona(BaseModel):
     name: str
     platform: str = "X (Twitter)"
     language: str = "en"
-    max_length: int = 280
+    max_length: int = Field(
+        default=280,
+        description="Maximum post length in X weighted units (CJK = 2, URL = 23).",
+    )
 
     voice: Voice
     strategist: AgentProfile
