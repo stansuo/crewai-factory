@@ -56,7 +56,7 @@ def build_tasks(team: AgentTeam, persona: Persona) -> list[Task]:
             f"{persona.platform} post in {persona.language}.\n"
             f"Voice: {persona.voice.tone}\n"
             f"Perspective: {persona.voice.perspective}\n"
-            f"Maximum length: {persona.max_length} characters.\n"
+            f"Maximum length: {persona.max_length} X weighted units.\n"
             f"The post must be ready to publish — no placeholders, "
             f"no meta-commentary."
         ),
@@ -71,7 +71,7 @@ def build_tasks(team: AgentTeam, persona: Persona) -> list[Task]:
             "Review the writer's post against these criteria:\n"
             "1. Voice consistency with the persona\n"
             "2. Engagement potential (would someone reply or share?)\n"
-            f"3. Length within {persona.max_length} characters\n"
+            f"3. Length within {persona.max_length} X weighted units\n"
             "4. No factual red flags or policy violations\n\n"
             "Score from 0-100. Only approve posts scoring 85+."
         ),
