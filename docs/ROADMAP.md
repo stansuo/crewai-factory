@@ -1,6 +1,6 @@
 # crewai-factory Roadmap
 
-> **Version: v1.4** | **Last updated: 2026-11-26**
+> **Version: v1.5** | **Last updated: 2026-11-28**
 > Single source of truth for project milestones. Historical context lives in `docs/devlog/`.
 
 ---
@@ -8,7 +8,7 @@
 ## 1. TL;DR
 
 - **Current milestone**: M4a — Publish path, verified on dev
-- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition re-verified 2026-11-26 after clearing the Dependabot queue (#51–#55); work not yet started. Dependabot version updates now run monthly (#53).
+- **Status**: M4 split into M4a / M4b (2026-09-12). M4a entry condition re-verified 2026-11-26 after clearing the Dependabot queue (#51–#55); PR 1 merged in #59 on 2026-11-28. PRs 2 and 3 remain planned. Dependabot version updates now run monthly (#53).
 - **Completed**: M1 ✅ foundation fixes, M2 ✅ modular package + engineering foundation, X API spike ✅ (auth + read/write verified), pre-M3 hardening ✅, M3 ✅ CrewAI Flow (retry-until-pass)
 - **Guiding principles**: security > maintainability > convenience; stabilize the text-only pipeline before adding features; GitHub Flow (feature branch → PR → main); public engine repo ships templates only — account-specific configuration lives in a private deployment repo
 
@@ -60,7 +60,8 @@ CrewAI Flow (`@start` / `@listen` / `@router`) replaced `Process.sequential`; wr
 
 **Plan** — three PRs, each independently verifiable and revertable:
 
-1. **Deterministic guard** — `guard.py`, pure functions, no LLM. Three rules: length within `persona.max_length` using X's weighted count (CJK = 2, URL = 23; `max_length` redefined as "X weighted units" and documented in the persona schema); no placeholders / meta-commentary; not a near-duplicate of recent published posts (from the ledger). Runs inside `edit_draft` before the editor crew is called; on violation it synthesises `EditorVerdict(score=0, feedback=<violations>)` so the existing router retries — no new flow topology. The same guard runs again immediately before any live publish.
+1. **Deterministic guard** (merged in #59) — `guard.py`, pure functions, no LLM. Three rules: length within `persona.max_length` using X's weighted count (CJK = 2, URL = 23; `max_length` redefined as "X weighted units" and documented in the persona schema); no placeholders / meta-commentary; not a near-duplicate of recent published posts (from the ledger). Runs inside `edit_draft` before the editor crew is called; on violation it synthesises `EditorVerdict(score=0, feedback=<violations>)` so the existing router retries — no new flow topology. The planned publish path will re-run the guard immediately before any live publish.
+   - **Verified scope**: offline draft rejection and retry, with caller-supplied history. No live X integration or deployment. Follow-up regression cases: a zh-TW meta-commentary heading is accepted, and internal CJK full stops can inflate URL weighting and reject a valid draft. Clarify X weighted units in the demo persona. These gaps are not resolved by the merge.
 2. **X client + `dry_run` default + SQLite ledger** — `Settings` gains `X_*` fields as `SecretStr` (closes the 2026-07-27 open item on unvalidated keys) and `publish_mode: "dry_run" | "live"` defaulting to `dry_run`. `x_client.py` posts via OAuth 1.0a user context (as in the spike). `ledger.py` uses stdlib `sqlite3`, one file, one table `posts` for now. SQLite over jsonl because the flow needs an update (fill in `tweet_id` after posting), M5b needs a second table joined on `tweet_id`, and two processes may write concurrently.
    - **OAuth 1.0a library must be declared** in `pyproject.toml`. The spikes (`scripts/spikes/test_x_api_*.py`) import `requests_oauthlib`, which was never declared and arrived only via chromadb; it left the lockfile with chromadb in #54, so the spikes fail until PR 2 moves them onto the declared library.
    - `posts` columns, **proposed, not yet reviewed — finalise at PR 2 kickoff**: `id, created_at, persona, topic, content_hash, content_path, editor_score, mode, approved_at, tweet_id, posted_at, http_status`. No M5 columns are pre-built.
@@ -169,9 +170,10 @@ Multi-model A/B → image generation → short video. Order unchanged: evaluatio
 - **2026-07-15 (v1.0)**: Initial public roadmap, published with the repository.
 - **2026-07-31 (v1.1)**: M3 complete — CrewAI Flow (retry-until-pass) merged (#19). Backlog updated (file-log sink → M4, dead-code removal).
 - **2026-09-12 (v1.2)**: M4 split into M4a / M4b with entry conditions and DoD; M5 restructured into M5a (inner loop) / M5b (outer loop) / M5c; four decisions logged; Backlog refreshed after dependabot sweep (#24, #25).
+- **2026-11-28 (v1.5)**: Marked M4a PR 1 merged (#59) and recorded the remaining zh-TW regression cases. Publish, ledger, and analytics milestones remain open.
 - **2026-11-26 (v1.4)**: Dependabot queue cleared (#51, #52, #54, #55); version updates moved to monthly (#53). crewai 1.15.44 made chromadb an optional extra, removing it and its four unpatched alerts from the tree. M4a PR 2 now also has to fix the spike scripts' undeclared OAuth dependency. Backlog: security-updates item closed (#51 is a security-update PR), chromadb and `type-stubs` items reworded.
 - **2026-11-13 (v1.3)**: Dependency sweep after a two-month pause — 14 open Dependabot PRs consolidated into one lockfile bump (#46); `type-stubs` Dependabot group added (#47). M4a entry condition re-verified. Backlog updated: `types-*` item done, security-updates and chromadb items reworded with what is and is not verified.
 
 ---
 
-*End of Roadmap v1.4*
+*End of Roadmap v1.5*
