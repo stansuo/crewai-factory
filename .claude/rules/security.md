@@ -1,6 +1,6 @@
 # Security
 
-No `paths` filter — this rule loads in every session, by design.
+This rule applies to every task. Read and follow it as required by `AGENTS.md`.
 
 ## Public repository awareness
 
@@ -19,7 +19,7 @@ check all three:
 A security finding may be documented in the public devlog **after** it is
 fixed, including how it was found and how it was resolved.
 
-**2. Language.** The engineering layer is English. See `CLAUDE.md`.
+**2. Language.** The engineering layer is English. See `AGENTS.md`.
 
 **3. History.** Devlog IDs predating the public repo don't exist here.
 
